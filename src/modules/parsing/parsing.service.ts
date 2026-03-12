@@ -1,9 +1,11 @@
 import { Injectable } from "@nestjs/common";
+import Root = cheerio.Root;
+import { getCleanText } from "../../utils/get-clean-text.util";
 
 @Injectable()
 export class ParsingService {
-  parsePhotosUrls(html: string) {
-    const allMatches = html.match(/images_gen&s;.*?\.webp/g) || [];
+  parsePhotosUrls(rawHtml: string) {
+    const allMatches = rawHtml.match(/images_gen&s;.*?\.webp/g) || [];
 
     const uniquePaths = Array.from(new Set(allMatches)).filter(
       (p) => !p.includes("boutiques") && p.includes("&s;"),
@@ -34,5 +36,33 @@ export class ParsingService {
     console.log(finalImages);
   }
 
-  parseCharacteristics(html: string) {}
+  parseTableCharacteristics($: Root) {
+    const characteristics: Record<string, string> = {};
+
+    $(".m-params.dot").each((index, tr) => {
+      console.log("tr");
+
+      const name = $(tr)
+        .find('th [itemprop="name"], th[itemprop="name"]')
+        .map((i, el) => $(el).attr("content"))
+        .get()
+        .join(", ");
+
+      const value = $(tr)
+        .find("td [itemprop=value], td[itemprop=value]")
+        .map((i, el) => $(el).attr("content"))
+        .get()
+        .join(", ");
+
+      console.log(`key:value      ${name}:${value}`);
+      if (!name || !value) {
+        return;
+      }
+
+      characteristics[name] = getCleanText(value);
+    });
+
+    console.log("characteristics", characteristics);
+    return characteristics;
+  }
 }
