@@ -32,16 +32,10 @@ export class ParsingService {
           .slice(0, 10);
       }
     }
-    console.log(`RESULTS FOR DRINK ${productId}: `);
-    console.log(finalImages);
   }
 
-  parseTableCharacteristics($: Root) {
-    const characteristics: Record<string, string> = {};
-
+  parseTableCharacteristics($: Root, characteristics: Record<string, string>) {
     $(".m-params.dot").each((index, tr) => {
-      console.log("tr");
-
       const name = $(tr)
         .find('th [itemprop="name"], th[itemprop="name"]')
         .map((i, el) => $(el).attr("content"))
@@ -54,7 +48,6 @@ export class ParsingService {
         .get()
         .join(", ");
 
-      console.log(`key:value      ${name}:${value}`);
       if (!name || !value) {
         return;
       }
@@ -62,13 +55,14 @@ export class ParsingService {
       characteristics[name] = getCleanText(value);
     });
 
-    console.log("characteristics", characteristics);
+    console.log(
+      "parsing results of parseTableCharacteristics:",
+      characteristics,
+    );
     return characteristics;
   }
 
-  parseBlocksCharacteristics($: Root) {
-    const characteristics: Record<string, string> = {};
-
+  parseAboutProduct($: Root, characteristics: Record<string, string>) {
     $(".o-productpage-details.wrapper")
       .children("div.m-specification")
       .find(".m-specification__item")
@@ -83,6 +77,37 @@ export class ParsingService {
         characteristics[name] = getCleanText(value);
       });
 
+    console.log("parsing results of parseAboutProduct:", characteristics);
+    return characteristics;
+  }
+
+  parseDescription($: Root, characteristics: Record<string, string>) {
+    $("div[class=o-productpage-details__item]").each((index, element) => {
+      const name = $(element).find("h3").text().trim();
+      const value = $(element)
+        .find("div:not([class]) p")
+        .map((i, el) => $(el).text().trim())
+        .get()
+        .join(" ");
+      characteristics[name] = getCleanText(value);
+    });
+
+    console.log("parsing results of parseDescription:", characteristics);
+    return characteristics;
+  }
+
+  parseName($: Root, characteristics: Record<string, string>) {
+    characteristics["Название на сайте"] = $("h1").text().trim();
+    console.log("parsing results of parseName:", characteristics);
+    return characteristics;
+  }
+
+  parseCharacteristics($: Root) {
+    let characteristics: Record<string, string> = {};
+    characteristics = this.parseName($, characteristics);
+    characteristics = this.parseTableCharacteristics($, characteristics);
+    characteristics = this.parseAboutProduct($, characteristics);
+    characteristics = this.parseDescription($, characteristics);
     return characteristics;
   }
 }
