@@ -65,4 +65,24 @@ export class ParsingService {
     console.log("characteristics", characteristics);
     return characteristics;
   }
+
+  parseBlocksCharacteristics($: Root) {
+    const characteristics: Record<string, string> = {};
+
+    $(".o-productpage-details.wrapper")
+      .children("div.m-specification")
+      .find(".m-specification__item")
+      .each((index, element) => {
+        const name = $(element).find("h3.heading.heading--xl").text().trim();
+        const value = $(element).find("p").text().trim();
+
+        if (!name || !value) {
+          return;
+        }
+
+        characteristics[name] = getCleanText(value);
+      });
+
+    return characteristics;
+  }
 }

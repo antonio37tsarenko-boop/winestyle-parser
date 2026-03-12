@@ -22,4 +22,12 @@ export class ParsingController {
       cheerio.load(await readFile(filePath, "utf-8")),
     );
   }
+
+  @Get("test/characteristics/blocks")
+  async parseBlocksCharacteristics() {
+    const filePath = path.join(process.cwd(), "src", "test.html.txt");
+    return this.parsingService.parseBlocksCharacteristics(
+      cheerio.load(await readFile(filePath, "utf-8")),
+    );
+  }
 }
