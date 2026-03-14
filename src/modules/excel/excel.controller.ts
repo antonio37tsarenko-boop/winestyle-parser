@@ -6,7 +6,7 @@ import * as path from "node:path";
 @Controller("excel")
 export class ExcelController {
   constructor(private readonly excelService: ExcelService) {}
-  @Get("test/urls")
+  @Get("test/info")
   async readUrls() {
     const workbook = new ExcelJs.Workbook();
     await workbook.xlsx.readFile(
@@ -19,7 +19,7 @@ export class ExcelController {
     if (!worksheet) {
       throw new NotFoundException("Excel list is not found");
     }
-    return this.excelService.readUrls(worksheet);
+    return this.excelService.readDrinksInfo(worksheet);
   }
 
   @Post("test/rows")

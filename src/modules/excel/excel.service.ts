@@ -1,17 +1,32 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { Column, Worksheet } from "exceljs";
-import path from "node:path";
+import { CellHyperlinkValue, Worksheet } from "exceljs";
 import * as ExcelJs from "exceljs";
-import { TABLE_PATH } from "./excel.constants";
+import { PARSED_URLS_PATH, TABLE_PATH } from "./excel.constants";
+import { readFile } from "fs/promises";
+import { getCleanText } from "../../utils/get-clean-text.util";
 
 @Injectable()
 export class ExcelService {
-  readUrls(worksheet: Worksheet) {
-    const urls = worksheet.getColumn("J") as any;
-    return urls.values
-      .slice(2)
-      .filter(Boolean)
-      .map((el: { text: string; hyperlink: string }) => el.hyperlink);
+  async readDrinksInfo(worksheet: Worksheet) {
+    const drinksInfo: { url: string; id: string }[] = [];
+    const parsedDrinks: string[] = JSON.parse(
+      await readFile(PARSED_URLS_PATH, "utf-8"),
+    );
+    worksheet.eachRow((row, rowNumber) => {
+      if (rowNumber == 1 || !rowNumber) {
+        return;
+      }
+      const url: { text: string; hyperlink: string } = row.getCell(10)
+        .value as CellHyperlinkValue;
+      const id = row.getCell(1).value?.toString();
+      if (url && id) {
+        if (!parsedDrinks.includes(id)) {
+          drinksInfo.push({ url: url.hyperlink, id: getCleanText(id) });
+        }
+      }
+    });
+
+    return drinksInfo.filter(Boolean);
   }
 
   async addDataWithDynamicColumns(
