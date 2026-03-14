@@ -21,4 +21,12 @@ export class ExcelController {
     }
     return this.excelService.readUrls(worksheet);
   }
+
+  @Post("test/rows")
+  async createRows() {
+    return this.excelService.addDataWithDynamicColumns(
+      [{ row1: "1" }, { row1: "2", row2: "5" }],
+      new ExcelJs.Workbook(),
+    );
+  }
 }
