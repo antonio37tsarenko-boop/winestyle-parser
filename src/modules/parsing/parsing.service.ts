@@ -1,6 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import Root = cheerio.Root;
 import { getCleanText } from "../../utils/get-clean-text.util";
+import { getCleanName } from "../../utils/get-clean-name.util";
+import { RESTRICTED_FIELDS } from "./parsing.constants";
 
 @Injectable()
 export class ParsingService {
@@ -32,6 +34,7 @@ export class ParsingService {
           .slice(0, 10);
       }
     }
+    return finalImages;
   }
 
   parseTableCharacteristics($: Root, characteristics: Record<string, string>) {
@@ -48,7 +51,7 @@ export class ParsingService {
         .get()
         .join(", ");
 
-      if (!name || !value) {
+      if (!name || !value || RESTRICTED_FIELDS.includes(name.trim())) {
         return;
       }
 
@@ -62,24 +65,24 @@ export class ParsingService {
     return characteristics;
   }
 
-  parseAboutProduct($: Root, characteristics: Record<string, string>) {
-    $(".o-productpage-details.wrapper")
-      .children("div.m-specification")
-      .find(".m-specification__item")
-      .each((index, element) => {
-        const name = $(element).find("h3.heading.heading--xl").text().trim();
-        const value = $(element).find("p").text().trim();
-
-        if (!name || !value) {
-          return;
-        }
-
-        characteristics[name] = getCleanText(value);
-      });
-
-    console.log("parsing results of parseAboutProduct:", characteristics);
-    return characteristics;
-  }
+  // parseAboutProduct($: Root, characteristics: Record<string, string>) {
+  //   $(".o-productpage-details.wrapper")
+  //     .children("div.m-specification")
+  //     .find(".m-specification__item")
+  //     .each((index, element) => {
+  //       const name = $(element).find("h3.heading.heading--xl").text().trim();
+  //       const value = $(element).find("p").text().trim();
+  //
+  //       if (!name || !value) {
+  //         return;
+  //       }
+  //
+  //       characteristics[name] = getCleanText(value);
+  //     });
+  //
+  //   console.log("parsing results of parseAboutProduct:", characteristics);
+  //   return characteristics;
+  // }
 
   parseDescription($: Root, characteristics: Record<string, string>) {
     $("div[class=o-productpage-details__item]").each((index, element) => {
@@ -89,6 +92,9 @@ export class ParsingService {
         .map((i, el) => $(el).text().trim())
         .get()
         .join(" ");
+      if (RESTRICTED_FIELDS.includes(name)) {
+        return;
+      }
       characteristics[name] = getCleanText(value);
     });
 
@@ -97,7 +103,7 @@ export class ParsingService {
   }
 
   parseName($: Root, characteristics: Record<string, string>) {
-    characteristics["Название на сайте"] = $("h1").text().trim();
+    characteristics["Название на сайте"] = getCleanName($("h1").text().trim());
     console.log("parsing results of parseName:", characteristics);
     return characteristics;
   }
@@ -106,7 +112,7 @@ export class ParsingService {
     let characteristics: Record<string, string> = {};
     characteristics = this.parseName($, characteristics);
     characteristics = this.parseTableCharacteristics($, characteristics);
-    characteristics = this.parseAboutProduct($, characteristics);
+    // characteristics = this.parseAboutProduct($, characteristics);
     characteristics = this.parseDescription($, characteristics);
     return characteristics;
   }

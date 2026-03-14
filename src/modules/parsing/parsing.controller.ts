@@ -24,14 +24,14 @@ export class ParsingController {
     );
   }
 
-  @Get("test/characteristics/blocks/aboutProduct")
-  async parseAboutProduct() {
-    const filePath = path.join(process.cwd(), "src", "test.html2.txt");
-    return this.parsingService.parseAboutProduct(
-      cheerio.load(await readFile(filePath, "utf-8")),
-      {},
-    );
-  }
+  // @Get("test/characteristics/blocks/aboutProduct")
+  // async parseAboutProduct() {
+  //   const filePath = path.join(process.cwd(), "src", "test.html2.txt");
+  //   return this.parsingService.parseAboutProduct(
+  //     cheerio.load(await readFile(filePath, "utf-8")),
+  //     {},
+  //   );
+  // }
 
   @Get("test/characteristics/blocks/desc")
   async parseDescription() {
@@ -44,7 +44,7 @@ export class ParsingController {
 
   @Get("test/characteristics")
   async parseCharacteristics() {
-    const filePath = path.join(process.cwd(), "src", "test.html3.txt");
+    const filePath = path.join(process.cwd(), "src", "test.html2.txt");
     return this.parsingService.parseCharacteristics(
       cheerio.load(await readFile(filePath, "utf-8")),
     );
