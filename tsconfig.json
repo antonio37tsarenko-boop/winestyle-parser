@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "NodeNext",
     "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
@@ -12,6 +12,9 @@
     "baseUrl": "./",
     "strict": true,
     "strictPropertyInitialization": false,
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "allowJs": true
   },
   "include": ["src"]
 }
