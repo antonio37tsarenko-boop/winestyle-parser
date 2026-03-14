@@ -16,4 +16,17 @@ export class FetcherService {
     this.logger.log(`status code for drink ${id}: ${statusCode}`);
     return body.text();
   }
+
+  async fetchAndWriteImages(urls: string[], id: string) {
+    let count = 1;
+    for (const url of urls) {
+      const { statusCode, body } = await request(url, httpImagesConfig);
+      const fullId = id + `-${count}`;
+      console.log(`status code for drink photo ${fullId}: ${statusCode}`);
+      const buffer = Buffer.from(await body.arrayBuffer());
+      await writeFile(GET_IMAGES_PATH(fullId), buffer);
+      count += 1;
+    }
+    console.log(`Images for drink ${id} are written`);
+  }
 }

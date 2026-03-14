@@ -12,4 +12,15 @@ export class FetcherController {
       "testId-1",
     );
   }
+
+  @Get("test/images")
+  async fetchAndWriteImages() {
+    return this.fetcherService.fetchAndWriteImages(
+      [
+        "https://s2.wine.style/images_gen/266/266624/0_0_991x600.webp",
+        "https://s2.wine.style/images_gen/266/266624/0_1_991x600.webp",
+      ],
+      "testId",
+    );
+  }
 }
