@@ -9,7 +9,7 @@ export class ParsingController {
   constructor(private readonly parsingService: ParsingService) {}
   @Get("test/photos")
   async parsePhotosUrls() {
-    const filePath = path.join(process.cwd(), "src", "test.html2.txt");
+    const filePath = path.join(process.cwd(), "src", "test.html3.txt");
     return this.parsingService.parsePhotosUrls(
       cheerio.load(await readFile(filePath, "utf-8")),
     );

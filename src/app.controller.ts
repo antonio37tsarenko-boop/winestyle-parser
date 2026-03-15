@@ -11,8 +11,8 @@ export class AppController {
   }
 
   @Get("start")
-  startParsing() // @Param("stop") stopAt: string
-  {
-    return this.appService.startParsing(41);
+  startParsing() {
+    // @Param("stop") stopAt: string
+    return this.appService.startParsing();
   }
 }

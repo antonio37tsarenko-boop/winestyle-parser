@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ExcelService } from "./modules/excel/excel.service";
 import { ParsingService } from "./modules/parsing/parsing.service";
 import { FetcherService } from "./modules/fetcher/fetcher.service";
@@ -13,6 +13,7 @@ import { readFile, writeFile } from "fs/promises";
 
 @Injectable()
 export class AppService {
+  logger: Logger = new Logger("AppService");
   constructor(
     private readonly excelService: ExcelService,
     private readonly fetcherService: FetcherService,
@@ -22,15 +23,13 @@ export class AppService {
     return "Hello World!";
   }
 
-  async startParsing(stopAt: number) {
+  async startParsing(stopAt: number = 10e10000) {
     let stopAtCount = 0;
     const oldWorkbook = new ExcelJs.Workbook();
     await oldWorkbook.xlsx.readFile(OLD_TABLE_PATH);
-    console.log("old workbook is initialized");
     const newWorkbook = new ExcelJs.Workbook();
     await newWorkbook.xlsx.readFile(NEW_TABLE_PATH);
     const oldWorksheet = oldWorkbook.getWorksheet(1);
-    console.log("excel tables are initialized");
     let parsedDrinks = JSON.parse(await readFile(PARSED_IDS_PATH, "utf-8"));
     let parsedData: Record<string, string>[] = parsedDrinks.parsedData || [];
     let parsedIds = parsedDrinks.parsedIds;
@@ -41,41 +40,38 @@ export class AppService {
     const drinks = (await this.excelService.readDrinksInfo(oldWorksheet)).slice(
       parsedIds.length,
     );
-    console.log(drinks);
     for (const { url, id } of drinks) {
-      console.log(`url for ${id}: ${url}`);
       if (stopAt == stopAtCount) {
-        return {
-          status: "done",
-        };
+        break;
       }
       const html = await this.fetcherService.fetchHtml(url, id);
       const $ = cheerio.load(html);
       parsedData.push(this.parsingService.parseCharacteristics($, id));
       const imagesUrls = this.parsingService.parsePhotosUrls($);
+      this.logger.log(`Links for drink ${id}: ${imagesUrls}`);
       await this.fetcherService.fetchAndWriteImages(imagesUrls, id);
 
       if (parsedData.length >= 40) {
         await this.excelService.addDataWithDynamicColumns(
           parsedData,
-          oldWorksheet,
+          oldWorkbook,
           newWorkbook,
         );
         parsedData = [];
       }
 
       parsedIds.push(id);
-      await writeFile(
-        PARSED_IDS_PATH,
-        JSON.stringify({ parsedIds, parsedData }),
-      );
-      console.log(`Drink ${id} is handled.`);
       stopAtCount += 1;
+      this.logger.log(`Drink ${id} is handled.`);
     }
     await this.excelService.addDataWithDynamicColumns(
       parsedData,
-      oldWorksheet,
+      oldWorkbook,
       newWorkbook,
+    );
+    await writeFile(
+      PARSED_IDS_PATH,
+      JSON.stringify({ parsedIds, parsedData: [] }),
     );
 
     return {

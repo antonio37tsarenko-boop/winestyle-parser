@@ -58,3 +58,4 @@ test.html*.txt
 src/excel-table*.test.xlsx
 images
 generated
+src/parsed-drinks.json

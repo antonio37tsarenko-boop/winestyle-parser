@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { CellHyperlinkValue, Worksheet } from "exceljs";
 import * as ExcelJs from "exceljs";
 import { NEW_TABLE_PATH, PARSED_IDS_PATH } from "./excel.constants";
@@ -7,6 +7,7 @@ import { getCleanText } from "../../utils/get-clean-text.util";
 
 @Injectable()
 export class ExcelService {
+  logger: Logger = new Logger("ExcelService");
   async readDrinksInfo(worksheet: Worksheet) {
     const drinksInfo: { url: string; id: string }[] = [];
     const parsedDrinks = JSON.parse(await readFile(PARSED_IDS_PATH, "utf-8"));
@@ -17,7 +18,6 @@ export class ExcelService {
       }
       const url: { text: string; hyperlink: string } = row.getCell(10)
         .value as CellHyperlinkValue;
-      console.log("url", url);
       const id = row.getCell(1).value?.toString();
       if (url && id) {
         if (!parsedIds.includes(id)) {
@@ -30,10 +30,14 @@ export class ExcelService {
   }
 
   async addDataWithDynamicColumns(
-    data: Record<string, string>[],
-    oldWorksheet: Worksheet,
+    newData: Record<string, string>[],
+    oldWorkbook: ExcelJs.Workbook,
     newWorkbook: ExcelJs.Workbook,
   ) {
+    const oldWorksheet = oldWorkbook.getWorksheet(1);
+    if (!oldWorksheet) {
+      throw new NotFoundException("Excel list is not found");
+    }
     const newWorksheet = newWorkbook.getWorksheet(1);
     if (!newWorksheet) {
       throw new NotFoundException("Excel list is not found");
@@ -46,7 +50,7 @@ export class ExcelService {
         existingColumns.add(cell.value.toString());
       }
     });
-    data.forEach((el) => {
+    newData.forEach((el) => {
       Object.keys(el).forEach((key) => {
         if (!existingColumns.has(key)) {
           newColumns.add(key);
@@ -81,33 +85,21 @@ export class ExcelService {
       oldData.push(rowData);
     });
 
-    console.log(
-      "new data",
-      data.map((el) => el["Артикул"]),
-    );
-    console.log(
-      "old data",
-      oldData.map((el) => getCleanText(el["Артикул"])),
-    );
-
-    data.forEach((newItem) => {
-      const index = oldData.findIndex((item) => {
-        return (
-          getCleanText(item["Артикул"]) === getCleanText(newItem["Артикул"])
-        );
-      });
-      console.log(`CORRECT INDEX: ${index}`);
-      if (index !== -1) {
-        oldData[index] = { ...oldData[index], ...newItem };
-        console.log(`UPDATEED OLD DATA: ${oldData[index]}`);
-      } else {
-        oldData.push(newItem);
+    const dataToWrite = newData.map((el) => {
+      const oldDataEl = oldData.find(
+        (oldEl) =>
+          getCleanText(oldEl["Артикул"]) == getCleanText(el["Артикул"]),
+      );
+      if (!oldDataEl) {
+        this.logger.error(`Wrong id: ${el["Артикул"]}`);
       }
+      return { ...oldDataEl, ...el };
     });
 
-    console.log(`ALL OLDDATA: ${oldData}`);
-    newWorksheet.addRows(oldData);
+    newWorksheet.addRows(dataToWrite);
     await newWorkbook.xlsx.writeFile(NEW_TABLE_PATH);
-    console.log("All columns in table: ", newWorksheet.getRow(1).values);
+    this.logger.log(
+      `Amount of all rows after writing: ${newWorksheet.rowCount}`,
+    );
   }
 }

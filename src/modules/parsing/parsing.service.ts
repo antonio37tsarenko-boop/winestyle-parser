@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, Logger } from "@nestjs/common";
 import Root = cheerio.Root;
 import { getCleanText } from "../../utils/get-clean-text.util";
 import { getCleanName } from "../../utils/get-clean-name.util";
@@ -6,11 +6,13 @@ import { RESTRICTED_FIELDS } from "./parsing.constants";
 
 @Injectable()
 export class ParsingService {
+  logger: Logger = new Logger("ParsingService");
   parsePhotosUrls($: Root) {
     const links: string[] = [];
     $("div.ws-carousel.ws-carousel__small-dots")
       .find("div.ws-carousel--wrapper")
       .find(".image")
+      .find("source")
       .each((index, img) => {
         const srcset = $(img).attr("srcset");
         if (srcset) {

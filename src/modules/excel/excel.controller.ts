@@ -27,10 +27,6 @@ export class ExcelController {
   async createRows() {
     const x = new ExcelJs.Workbook();
     await x.xlsx.writeFile(OLD_TABLE_PATH);
-    const oldWorksheet = x.getWorksheet(1);
-    if (!oldWorksheet) {
-      return "no old worksheet";
-    }
     console.log(OLD_TABLE_PATH);
     const d = new ExcelJs.Workbook();
     await d.xlsx.writeFile(NEW_TABLE_PATH);
@@ -38,7 +34,7 @@ export class ExcelController {
 
     return this.excelService.addDataWithDynamicColumns(
       [{ row1: "1" }, { row1: "2", row2: "5" }],
-      oldWorksheet,
+      x,
       d,
     );
   }
