@@ -1,4 +1,8 @@
 import { join } from "node:path";
 
-export const TABLE_PATH = join(process.cwd(), "src/excel-table.test.xlsx");
-export const PARSED_URLS_PATH = join(process.cwd(), "parsed-urls.json");
+export const OLD_TABLE_PATH = join(process.cwd(), "src/old.xlsx");
+export const NEW_TABLE_PATH = join(
+  process.cwd(),
+  "src/excel-table-new.test.xlsx",
+);
+export const PARSED_IDS_PATH = join(process.cwd(), "src/parsed-drinks.json");

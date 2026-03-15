@@ -6,38 +6,34 @@ import { RESTRICTED_FIELDS } from "./parsing.constants";
 
 @Injectable()
 export class ParsingService {
-  parsePhotosUrls(rawHtml: string) {
-    const allMatches = rawHtml.match(/images_gen&s;.*?\.webp/g) || [];
+  parsePhotosUrls($: Root) {
+    const links: string[] = [];
+    $("div.ws-carousel.ws-carousel__small-dots")
+      .find("div.ws-carousel--wrapper")
+      .find(".image")
+      .each((index, img) => {
+        const srcset = $(img).attr("srcset");
+        if (srcset) {
+          const parts = srcset.split(",");
+          const lastPart = parts[parts.length - 1];
+          const cleanLink = lastPart.trim().split(" ")[0];
 
-    const uniquePaths = Array.from(new Set(allMatches)).filter(
-      (p) => !p.includes("boutiques") && p.includes("&s;"),
-    );
+          if (cleanLink) {
+            links.push(cleanLink);
+          }
+        } else {
+          const src = $(img).attr("src");
+          if (src) links.push(src);
+        }
+      });
 
-    const finalImages = [];
-    const seenIndexes = new Set();
-
-    let productId: string = "";
-    for (const path of uniquePaths) {
-      const matchIndex = path.match(/\d+_\d+/);
-      const index = matchIndex ? matchIndex[0] : null;
-
-      if (index && !seenIndexes.has(index)) {
-        seenIndexes.add(index);
-
-        const cleanUrl = `https://s2.wine.style/${path
-          .replace(/&s;/g, "/")
-          .replace("%wx%h", "991x600")}`;
-
-        finalImages.push(cleanUrl);
-        productId = cleanUrl
-          .split("https://s2.wine.style/images_gen/")[1]
-          .slice(0, 10);
-      }
-    }
-    return finalImages;
+    return [...new Set(links)];
   }
 
-  parseTableCharacteristics($: Root, characteristics: Record<string, string>) {
+  private parseTableCharacteristics(
+    $: Root,
+    characteristics: Record<string, string>,
+  ) {
     $(".m-params.dot").each((index, tr) => {
       const name = $(tr)
         .find('th [itemprop="name"], th[itemprop="name"]')
@@ -58,33 +54,10 @@ export class ParsingService {
       characteristics[name] = getCleanText(value);
     });
 
-    console.log(
-      "parsing results of parseTableCharacteristics:",
-      characteristics,
-    );
     return characteristics;
   }
 
-  // parseAboutProduct($: Root, characteristics: Record<string, string>) {
-  //   $(".o-productpage-details.wrapper")
-  //     .children("div.m-specification")
-  //     .find(".m-specification__item")
-  //     .each((index, element) => {
-  //       const name = $(element).find("h3.heading.heading--xl").text().trim();
-  //       const value = $(element).find("p").text().trim();
-  //
-  //       if (!name || !value) {
-  //         return;
-  //       }
-  //
-  //       characteristics[name] = getCleanText(value);
-  //     });
-  //
-  //   console.log("parsing results of parseAboutProduct:", characteristics);
-  //   return characteristics;
-  // }
-
-  parseDescription($: Root, characteristics: Record<string, string>) {
+  private parseDescription($: Root, characteristics: Record<string, string>) {
     $("div[class=o-productpage-details__item]").each((index, element) => {
       const name = $(element).find("h3").text().trim();
       const value = $(element)
@@ -98,22 +71,20 @@ export class ParsingService {
       characteristics[name] = getCleanText(value);
     });
 
-    console.log("parsing results of parseDescription:", characteristics);
     return characteristics;
   }
 
-  parseName($: Root, characteristics: Record<string, string>) {
+  private parseName($: Root, characteristics: Record<string, string>) {
     characteristics["Название на сайте"] = getCleanName($("h1").text().trim());
-    console.log("parsing results of parseName:", characteristics);
     return characteristics;
   }
 
-  parseCharacteristics($: Root) {
+  parseCharacteristics($: Root, id: string) {
     let characteristics: Record<string, string> = {};
     characteristics = this.parseName($, characteristics);
     characteristics = this.parseTableCharacteristics($, characteristics);
-    // characteristics = this.parseAboutProduct($, characteristics);
     characteristics = this.parseDescription($, characteristics);
+    characteristics["Артикул"] = id;
     return characteristics;
   }
 }

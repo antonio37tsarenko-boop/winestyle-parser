@@ -23,6 +23,9 @@ export class FetcherService {
       const { statusCode, body } = await request(url, httpImagesConfig);
       const fullId = id + `-${count}`;
       console.log(`status code for drink photo ${fullId}: ${statusCode}`);
+      if (statusCode == 404) {
+        console.error(`404 for link ${url}`);
+      }
       const buffer = Buffer.from(await body.arrayBuffer());
       await writeFile(GET_IMAGES_PATH(fullId), buffer);
       count += 1;

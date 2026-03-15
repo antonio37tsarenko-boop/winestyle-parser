@@ -1,4 +1,4 @@
-import { Controller, Get } from "@nestjs/common";
+import { Controller, Get, Param } from "@nestjs/common";
 import { AppService } from "./app.service";
 
 @Controller()
@@ -10,8 +10,9 @@ export class AppController {
     return this.appService.getHello();
   }
 
-  @Get("parsing/start")
-  startParsing() {
-    return this.appService.startParsing();
+  @Get("start")
+  startParsing() // @Param("stop") stopAt: string
+  {
+    return this.appService.startParsing(41);
   }
 }

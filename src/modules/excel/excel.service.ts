@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { CellHyperlinkValue, Worksheet } from "exceljs";
 import * as ExcelJs from "exceljs";
-import { PARSED_URLS_PATH, TABLE_PATH } from "./excel.constants";
+import { NEW_TABLE_PATH, PARSED_IDS_PATH } from "./excel.constants";
 import { readFile } from "fs/promises";
 import { getCleanText } from "../../utils/get-clean-text.util";
 
@@ -9,18 +9,18 @@ import { getCleanText } from "../../utils/get-clean-text.util";
 export class ExcelService {
   async readDrinksInfo(worksheet: Worksheet) {
     const drinksInfo: { url: string; id: string }[] = [];
-    const parsedDrinks: string[] = JSON.parse(
-      await readFile(PARSED_URLS_PATH, "utf-8"),
-    );
+    const parsedDrinks = JSON.parse(await readFile(PARSED_IDS_PATH, "utf-8"));
+    const parsedIds = parsedDrinks.parsedIds;
     worksheet.eachRow((row, rowNumber) => {
       if (rowNumber == 1 || !rowNumber) {
         return;
       }
       const url: { text: string; hyperlink: string } = row.getCell(10)
         .value as CellHyperlinkValue;
+      console.log("url", url);
       const id = row.getCell(1).value?.toString();
       if (url && id) {
-        if (!parsedDrinks.includes(id)) {
+        if (!parsedIds.includes(id)) {
           drinksInfo.push({ url: url.hyperlink, id: getCleanText(id) });
         }
       }
@@ -31,19 +31,16 @@ export class ExcelService {
 
   async addDataWithDynamicColumns(
     data: Record<string, string>[],
-    workbook: ExcelJs.Workbook,
+    oldWorksheet: Worksheet,
+    newWorkbook: ExcelJs.Workbook,
   ) {
-    await workbook.xlsx.readFile(TABLE_PATH);
-    if (!workbook) {
-      throw new NotFoundException("Excel workbook is not found");
-    }
-    const worksheet = workbook.getWorksheet(1);
-    if (!worksheet) {
+    const newWorksheet = newWorkbook.getWorksheet(1);
+    if (!newWorksheet) {
       throw new NotFoundException("Excel list is not found");
     }
     const existingColumns = new Set<string>();
     const newColumns = new Set<string>();
-    const columnsNames = worksheet.getRow(1);
+    const columnsNames = oldWorksheet.getRow(1);
     columnsNames.eachCell((cell) => {
       if (cell.value) {
         existingColumns.add(cell.value.toString());
@@ -57,22 +54,60 @@ export class ExcelService {
       });
     });
 
-    const currentColumns = Array.from(existingColumns).map((el) => ({
+    const oldColumns = Array.from(existingColumns).map((el) => ({
       header: el,
       key: el,
       width: 30,
     }));
 
-    worksheet.columns = [
-      ...currentColumns,
+    newWorksheet.columns = [
+      ...oldColumns,
       ...Array.from(newColumns).map((column) => ({
         header: column,
         key: column,
         width: 30,
       })),
     ];
-    worksheet.addRows(data);
-    await workbook.xlsx.writeFile(TABLE_PATH);
-    console.log("All columns in table: ", worksheet.getRow(1).values);
+
+    const oldData: Record<string, any>[] = [];
+    oldWorksheet.eachRow((row, rowNumber) => {
+      if (rowNumber === 1) return;
+
+      const rowData: Record<string, any> = {};
+      row.eachCell((cell, colNumber) => {
+        const headerName = oldWorksheet.getRow(1).getCell(colNumber).text;
+        rowData[headerName] = cell.value;
+      });
+      oldData.push(rowData);
+    });
+
+    console.log(
+      "new data",
+      data.map((el) => el["Артикул"]),
+    );
+    console.log(
+      "old data",
+      oldData.map((el) => getCleanText(el["Артикул"])),
+    );
+
+    data.forEach((newItem) => {
+      const index = oldData.findIndex((item) => {
+        return (
+          getCleanText(item["Артикул"]) === getCleanText(newItem["Артикул"])
+        );
+      });
+      console.log(`CORRECT INDEX: ${index}`);
+      if (index !== -1) {
+        oldData[index] = { ...oldData[index], ...newItem };
+        console.log(`UPDATEED OLD DATA: ${oldData[index]}`);
+      } else {
+        oldData.push(newItem);
+      }
+    });
+
+    console.log(`ALL OLDDATA: ${oldData}`);
+    newWorksheet.addRows(oldData);
+    await newWorkbook.xlsx.writeFile(NEW_TABLE_PATH);
+    console.log("All columns in table: ", newWorksheet.getRow(1).values);
   }
 }

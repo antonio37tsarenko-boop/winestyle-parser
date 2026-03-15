@@ -11,17 +11,17 @@ export class ParsingController {
   async parsePhotosUrls() {
     const filePath = path.join(process.cwd(), "src", "test.html2.txt");
     return this.parsingService.parsePhotosUrls(
-      await readFile(filePath, "utf-8"),
+      cheerio.load(await readFile(filePath, "utf-8")),
     );
   }
 
   @Get("test/characteristics/table")
   async parseTableCharacteristics() {
     const filePath = path.join(process.cwd(), "src", "test.html2.txt");
-    return this.parsingService.parseTableCharacteristics(
-      cheerio.load(await readFile(filePath, "utf-8")),
-      {},
-    );
+    // return this.parsingService.parseTableCharacteristics(
+    //   cheerio.load(await readFile(filePath, "utf-8")),
+    //   {},
+    // );
   }
 
   // @Get("test/characteristics/blocks/aboutProduct")
@@ -36,10 +36,10 @@ export class ParsingController {
   @Get("test/characteristics/blocks/desc")
   async parseDescription() {
     const filePath = path.join(process.cwd(), "src", "test.html2.txt");
-    return this.parsingService.parseDescription(
-      cheerio.load(await readFile(filePath, "utf-8")),
-      {},
-    );
+    // return this.parsingService.parseDescription(
+    //   cheerio.load(await readFile(filePath, "utf-8")),
+    //   {},
+    // );
   }
 
   @Get("test/characteristics")
@@ -47,6 +47,7 @@ export class ParsingController {
     const filePath = path.join(process.cwd(), "src", "test.html2.txt");
     return this.parsingService.parseCharacteristics(
       cheerio.load(await readFile(filePath, "utf-8")),
+      "testId",
     );
   }
 }
