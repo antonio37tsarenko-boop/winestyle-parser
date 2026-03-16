@@ -1,4 +1,4 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable } from "@nestjs/common";
 import Root = cheerio.Root;
 import { getCleanText } from "../../utils/get-clean-text.util";
 import { getCleanName } from "../../utils/get-clean-name.util";
@@ -6,26 +6,28 @@ import { RESTRICTED_FIELDS } from "./parsing.constants";
 
 @Injectable()
 export class ParsingService {
-  logger: Logger = new Logger("ParsingService");
   parsePhotosUrls($: Root) {
     const links: string[] = [];
     $("div.ws-carousel.ws-carousel__small-dots")
       .find("div.ws-carousel--wrapper")
       .find(".image")
       .find("source")
-      .each((index, img) => {
+      .each((_, img) => {
         const srcset = $(img).attr("srcset");
         if (srcset) {
           const parts = srcset.split(",");
           const lastPart = parts[parts.length - 1];
+          if (!lastPart) {
+            this.getImageFromSrc($, img, links);
+            return;
+          }
           const cleanLink = lastPart.trim().split(" ")[0];
 
           if (cleanLink) {
             links.push(cleanLink);
           }
         } else {
-          const src = $(img).attr("src");
-          if (src) links.push(src);
+          this.getImageFromSrc($, img, links);
         }
       });
 
@@ -36,16 +38,16 @@ export class ParsingService {
     $: Root,
     characteristics: Record<string, string>,
   ) {
-    $(".m-params.dot").each((index, tr) => {
+    $(".m-params.dot").each((_, tr) => {
       const name = $(tr)
         .find('th [itemprop="name"], th[itemprop="name"]')
-        .map((i, el) => $(el).attr("content"))
+        .map((_, el) => $(el).attr("content"))
         .get()
         .join(", ");
 
       const value = $(tr)
         .find("td [itemprop=value], td[itemprop=value]")
-        .map((i, el) => $(el).attr("content"))
+        .map((_, el) => $(el).attr("content"))
         .get()
         .join(", ");
 
@@ -60,13 +62,14 @@ export class ParsingService {
   }
 
   private parseDescription($: Root, characteristics: Record<string, string>) {
-    $("div[class=o-productpage-details__item]").each((index, element) => {
+    $("div[class=o-productpage-details__item]").each((_, element) => {
       const name = $(element).find("h3").text().trim();
       const value = $(element)
         .find("div:not([class]) p")
-        .map((i, el) => $(el).text().trim())
+        .map((_, el) => $(el).text().trim())
         .get()
         .join(" ");
+
       if (RESTRICTED_FIELDS.includes(name)) {
         return;
       }
@@ -88,5 +91,10 @@ export class ParsingService {
     characteristics = this.parseDescription($, characteristics);
     characteristics["Артикул"] = id;
     return characteristics;
+  }
+
+  private getImageFromSrc($: Root, img: cheerio.Element, links: string[]) {
+    const src = $(img).attr("src");
+    if (src) links.push(src);
   }
 }

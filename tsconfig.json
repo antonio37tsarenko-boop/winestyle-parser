@@ -11,6 +11,30 @@
     "outDir": "./dist",
     "baseUrl": "./",
     "strict": true,
+
+    /* --- ДОБАВЛЕННЫЕ ПАРАМЕТРЫ ДЛЯ ЖЕСТКОСТИ --- */
+
+    // Запрещает неявный any. Если ты не указал тип, и TS не вывел его сам — будет ошибка.
+    "noImplicitAny": true,
+
+    // Запрещает any в операциях. Ты не сможешь вызвать функцию или прочитать свойство у any-объекта.
+    "noImplicitThis": true,
+
+    // Самая крутая фича: заставляет проверять наличие данных в массивах/объектах.
+    // Если ты берешь data[0], тип будет T | undefined, и ты ОБЯЗАН будешь сделать проверку.
+    "noUncheckedIndexedAccess": true,
+
+    // Запрещает «проваливание» в switch-case (защита от забытого break)
+    "noFallthroughCasesInSwitch": true,
+
+    // Ругается, если в функции есть неиспользуемые локальные переменные
+    "noUnusedLocals": true,
+
+    // Ругается, если параметры функции не используются
+    "noUnusedParameters": true,
+
+    /* ------------------------------------------- */
+
     "strictPropertyInitialization": false,
     "moduleResolution": "NodeNext",
     "esModuleInterop": true,
