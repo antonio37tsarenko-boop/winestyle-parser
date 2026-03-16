@@ -55,7 +55,6 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 test.html*.txt
-src/excel-table*.test.xlsx
-images
+data-for-parsing/images
 generated
-src/parsed-drinks.json
+data-for-parsing
