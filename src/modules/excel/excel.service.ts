@@ -44,12 +44,19 @@ export class ExcelService {
     }
     const existingColumns = new Set<string>();
     const newColumns = new Set<string>();
-    const columnsNames = oldWorksheet.getRow(1);
+    const columnsNames = newWorksheet.getRow(1);
     columnsNames.eachCell((cell) => {
       if (cell.value) {
         existingColumns.add(cell.value.toString());
       }
     });
+    if (existingColumns.size <= 0) {
+      oldWorksheet.getRow(1).eachCell((cell) => {
+        if (cell.value) {
+          existingColumns.add(String(cell.value));
+        }
+      });
+    }
     newData.forEach((el) => {
       Object.keys(el).forEach((key) => {
         if (!existingColumns.has(key)) {
@@ -86,10 +93,12 @@ export class ExcelService {
     });
 
     const dataToWrite = newData.map((el) => {
-      const oldDataEl = oldData.find(
-        (oldEl) =>
-          getCleanText(oldEl["Артикул"]) == getCleanText(el["Артикул"]),
-      );
+      const oldDataEl = oldData.find((oldEl) => {
+        return (
+          getCleanText(String(oldEl["Артикул"])) ==
+          getCleanText(String(el["Артикул"]))
+        );
+      });
       if (!oldDataEl) {
         this.logger.error(`Wrong id: ${el["Артикул"]}`);
       }

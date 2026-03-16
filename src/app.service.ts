@@ -62,6 +62,10 @@ export class AppService {
 
       parsedIds.push(id);
       stopAtCount += 1;
+      await writeFile(
+        PARSED_IDS_PATH,
+        JSON.stringify({ parsedIds, parsedData }),
+      );
       this.logger.log(`Drink ${id} is handled.`);
     }
     await this.excelService.addDataWithDynamicColumns(
