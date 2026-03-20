@@ -1,6 +1,7 @@
 import { ProxyAgent } from "undici";
 import { join } from "node:path";
 import "dotenv/config";
+import * as process from "node:process";
 
 const agent = new ProxyAgent({
   uri: process.env.BRIGHTDATA_PROXY_URL as string,
@@ -31,5 +32,6 @@ export const WEB_ACCESS_URL = "https://api.brightdata.com/request";
 export const GET_IMAGES_PATH = (fullId: string) => {
   // const productId = fullId.split("-")[0];
   // await mkdir(`images/${productId}`, { recursive: true });
-  return join(process.cwd(), "data-for-parsing/images", `${fullId}.jpg`);
+  return join(process.cwd(), "data-for-parsing/images", `${fullId}.webp`);
 };
+export const IMAGES_DIR_PATH = join(process.cwd(), "data-for-parsing/images");

@@ -29,55 +29,60 @@ export class AppService {
     await oldWorkbook.xlsx.readFile(OLD_TABLE_PATH);
     const newWorkbook = new ExcelJs.Workbook();
     await newWorkbook.xlsx.readFile(NEW_TABLE_PATH);
-    const oldWorksheet = oldWorkbook.getWorksheet(1);
-    let parsedDrinks = JSON.parse(await readFile(PARSED_IDS_PATH, "utf-8"));
-    let parsedData: Record<string, string>[] = parsedDrinks.parsedData || [];
-    let parsedIds = parsedDrinks.parsedIds;
-
-    if (!oldWorkbook || !oldWorksheet) {
-      throw new NotFoundException("Worksheet is not found.");
-    }
-    const drinks = (await this.excelService.readDrinksInfo(oldWorksheet)).slice(
-      parsedIds.length,
-    );
-    for (const { url, id } of drinks) {
+    let i = 1;
+    for (const oldWorksheet of oldWorkbook.worksheets) {
       if (stopAt == stopAtCount) {
         break;
       }
-      const html = await this.fetcherService.fetchHtml(url, id);
-      const $ = cheerio.load(html);
-      parsedData.push(this.parsingService.parseCharacteristics($, id));
-      const imagesUrls = this.parsingService.parsePhotosUrls($);
-      this.logger.log(`Links for drink ${id}: ${imagesUrls}`);
-      await this.fetcherService.fetchAndWriteImages(imagesUrls, id);
+      const newWorksheet = newWorkbook.addWorksheet(oldWorksheet.name);
+      let parsedDrinks = JSON.parse(await readFile(PARSED_IDS_PATH, "utf-8"));
+      let parsedData: Record<string, string>[] = parsedDrinks.parsedData || [];
+      let parsedIds = parsedDrinks.parsedIds;
 
-      if (parsedData.length >= 40) {
-        await this.excelService.addDataWithDynamicColumns(
-          parsedData,
-          oldWorkbook,
-          newWorkbook,
-        );
-        parsedData = [];
+      if (!oldWorkbook || !oldWorksheet) {
+        throw new NotFoundException("Worksheet is not found.");
       }
+      const drinks = (
+        await this.excelService.readDrinksInfo(oldWorksheet)
+      ).slice(parsedIds.length);
+      for (const { url, id } of drinks) {
+        const html = await this.fetcherService.fetchHtml(url, id);
+        const $ = cheerio.load(html);
+        parsedData.push(this.parsingService.parseCharacteristics($, id));
+        const imagesUrls = this.parsingService.parsePhotosUrls($);
+        this.logger.log(`Links for drink ${id}: ${imagesUrls}`);
+        await this.fetcherService.fetchAndWriteImages(imagesUrls, id);
 
-      parsedIds.push(id);
-      stopAtCount += 1;
+        if (parsedData.length >= 40) {
+          await this.excelService.addDataWithDynamicColumns(
+            parsedData,
+            oldWorkbook,
+            newWorksheet,
+            newWorkbook,
+          );
+          parsedData = [];
+        }
+
+        parsedIds.push(id);
+        await writeFile(
+          PARSED_IDS_PATH,
+          JSON.stringify({ parsedIds, parsedData }),
+        );
+        this.logger.log(`Drink ${id} is handled.`);
+      }
+      await this.excelService.addDataWithDynamicColumns(
+        parsedData,
+        oldWorkbook,
+        newWorksheet,
+        newWorkbook,
+      );
       await writeFile(
         PARSED_IDS_PATH,
-        JSON.stringify({ parsedIds, parsedData }),
+        JSON.stringify({ parsedIds, parsedData: [] }),
       );
-      this.logger.log(`Drink ${id} is handled.`);
+      i += 1;
+      stopAtCount += 1;
     }
-    await this.excelService.addDataWithDynamicColumns(
-      parsedData,
-      oldWorkbook,
-      newWorkbook,
-    );
-    await writeFile(
-      PARSED_IDS_PATH,
-      JSON.stringify({ parsedIds, parsedData: [] }),
-    );
-
     return {
       status: "done",
     };

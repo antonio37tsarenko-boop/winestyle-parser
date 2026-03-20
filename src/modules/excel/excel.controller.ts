@@ -3,6 +3,7 @@ import { ExcelService } from "./excel.service";
 import * as ExcelJs from "exceljs";
 import * as path from "node:path";
 import { NEW_TABLE_PATH, OLD_TABLE_PATH } from "./excel.constants";
+import { Worksheet } from "exceljs";
 
 @Controller("excel")
 export class ExcelController {
@@ -35,6 +36,7 @@ export class ExcelController {
     return this.excelService.addDataWithDynamicColumns(
       [{ row1: "1" }, { row1: "2", row2: "5" }],
       x,
+      d.getWorksheet(1) as Worksheet,
       d,
     );
   }

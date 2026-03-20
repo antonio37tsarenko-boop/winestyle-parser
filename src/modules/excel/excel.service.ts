@@ -21,11 +21,23 @@ export class ExcelService {
       if (rowNumber == 1 || !rowNumber) {
         return;
       }
-      const url =
-        //: { text: string; hyperlink: string }
-        row.getCell(10).value;
+      let urlColIndex = -1;
+
+      worksheet.getRow(1).eachCell((cell, colNumber) => {
+        if (getCleanText(cell.text) === getCleanText("Ссылка")) {
+          urlColIndex = colNumber;
+        }
+      });
+      if (urlColIndex === -1) {
+        this.logger.error(`Column "Ссылка" is not found`);
+        return [];
+      }
+      const url = row.getCell(urlColIndex).value;
+
+      if (!url) {
+        return;
+      }
       if (
-        !url ||
         typeof url !== "object" ||
         !("hyperlink" in url) ||
         !("text" in url)
@@ -47,6 +59,7 @@ export class ExcelService {
   async addDataWithDynamicColumns(
     newData: Record<string, string>[],
     existingWorkbook: ExcelJs.Workbook,
+    newWorksheet: Worksheet,
     newWorkbook: ExcelJs.Workbook,
   ) {
     const existingWorksheet = existingWorkbook.getWorksheet(1);
@@ -54,10 +67,6 @@ export class ExcelService {
       throw new NotFoundException("Excel list is not found");
     }
 
-    const newWorksheet = newWorkbook.getWorksheet(1);
-    if (!newWorksheet) {
-      throw new NotFoundException("Excel list is not found");
-    }
     const existingColumns = new Set<string>();
     const newColumns = new Set<string>();
 
@@ -86,6 +95,14 @@ export class ExcelService {
       ...this.adjustColumns(existingColumns),
       ...this.adjustColumns(newColumns),
     ];
+    const currentCols = [...(newWorksheet.columns || [])];
+
+    if (currentCols.length > 0) {
+      newWorksheet.columns = this.reorderAndInsertDescription(
+        currentCols,
+        "Описание",
+      );
+    }
 
     const existingData: Record<string, CellValue>[] = [];
     existingWorksheet.eachRow((row, rowNumber) => {
@@ -112,6 +129,7 @@ export class ExcelService {
     });
 
     newWorksheet.addRows(dataToWrite);
+
     await newWorkbook.xlsx.writeFile(NEW_TABLE_PATH);
     this.logger.log(
       `Amount of all rows after writing: ${newWorksheet.rowCount}`,
@@ -124,5 +142,51 @@ export class ExcelService {
       key: column,
       width: 30,
     }));
+  }
+
+  private reorderAndInsertDescription(
+    columns: Partial<ExcelJs.Column>[],
+    targetHeader: string,
+  ): Partial<ExcelJs.Column>[] {
+    const cleanTarget = getCleanText(targetHeader);
+    const newHeaderName = "Новое описание";
+    const cleanNewHeader = getCleanText(newHeaderName);
+
+    const existingNewIdx = columns.findIndex(
+      (col) =>
+        col.header && getCleanText(col.header.toString()) === cleanNewHeader,
+    );
+    if (existingNewIdx !== -1) {
+      columns.splice(existingNewIdx, 1);
+    }
+
+    const currentIndex = columns.findIndex(
+      (col) =>
+        col.header && getCleanText(col.header.toString()) === cleanTarget,
+    );
+
+    if (currentIndex === -1) {
+      this.logger.warn(`Column ${targetHeader} is not found`);
+      return columns;
+    }
+
+    const [targetColumn] = columns.splice(currentIndex, 1);
+
+    if (!targetColumn) {
+      this.logger.warn(`Column ${targetHeader} is not found`);
+      return columns;
+    }
+    targetColumn.key = "Описание";
+
+    const newDescriptionColumn: Partial<ExcelJs.Column> = {
+      header: newHeaderName,
+      key: "Новое Описание",
+      width: 35,
+    };
+
+    columns.splice(10, 0, targetColumn || {});
+    columns.splice(11, 0, newDescriptionColumn);
+
+    return columns;
   }
 }

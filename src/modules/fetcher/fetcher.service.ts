@@ -4,8 +4,9 @@ import {
   GET_IMAGES_PATH,
   httpConfig,
   httpImagesConfig,
+  IMAGES_DIR_PATH,
 } from "./fetcher.constants";
-import { writeFile } from "fs/promises";
+import { mkdir, writeFile } from "fs/promises";
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 
 @Injectable()
@@ -29,6 +30,7 @@ export class FetcherService {
       } else this.logger.log(`Status code for drink ${id}: ${statusCode}`);
 
       const buffer = Buffer.from(await body.arrayBuffer());
+      await mkdir(IMAGES_DIR_PATH, { recursive: true });
       await writeFile(GET_IMAGES_PATH(fullId), buffer);
       imageCount += 1;
     }

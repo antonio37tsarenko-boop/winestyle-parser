@@ -12,6 +12,6 @@ export class AppController {
 
   @Get("start")
   startParsing() {
-    return this.appService.startParsing();
+    return this.appService.startParsing(1);
   }
 }
