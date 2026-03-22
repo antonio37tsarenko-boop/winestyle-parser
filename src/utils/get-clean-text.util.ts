@@ -4,6 +4,5 @@ export const getCleanText = (text: string): string => {
   return text
     .replace(/[\n\r\t]/g, " ")
     .replace(/\s\s+/g, " ")
-    .trim()
-    .toLowerCase();
+    .trim();
 };

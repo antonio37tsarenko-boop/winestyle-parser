@@ -10,6 +10,7 @@ import {
 } from "./modules/excel/excel.constants";
 import * as cheerio from "cheerio";
 import { readFile, writeFile } from "fs/promises";
+import { IParsedDataFile } from "./modules/excel/interfaces/parsed-data-file.interface";
 
 @Injectable()
 export class AppService {
@@ -29,24 +30,41 @@ export class AppService {
     await oldWorkbook.xlsx.readFile(OLD_TABLE_PATH);
     const newWorkbook = new ExcelJs.Workbook();
     await newWorkbook.xlsx.readFile(NEW_TABLE_PATH);
-    let i = 1;
     for (const oldWorksheet of oldWorkbook.worksheets) {
       if (stopAt == stopAtCount) {
         break;
       }
-      const newWorksheet = newWorkbook.addWorksheet(oldWorksheet.name);
-      let parsedDrinks = JSON.parse(await readFile(PARSED_IDS_PATH, "utf-8"));
+      let parsedDrinks: IParsedDataFile = JSON.parse(
+        await readFile(PARSED_IDS_PATH, "utf-8"),
+      );
       let parsedData: Record<string, string>[] = parsedDrinks.parsedData || [];
       let parsedIds = parsedDrinks.parsedIds;
+      let parsedWorksheets = parsedDrinks.parsedWorksheets;
+      let newWorksheet;
+      try {
+        newWorksheet = newWorkbook.addWorksheet(oldWorksheet.name);
+      } catch (e) {
+        if (parsedWorksheets.includes(oldWorksheet.name)) {
+          continue;
+        } else {
+          newWorksheet = newWorkbook.getWorksheet(oldWorksheet.name);
+          if (!newWorksheet) {
+            continue;
+          }
+        }
+      }
+      this.logger.log(`Start handling worksheet ${oldWorksheet.name}`);
 
       if (!oldWorkbook || !oldWorksheet) {
         throw new NotFoundException("Worksheet is not found.");
       }
-      const drinks = (
-        await this.excelService.readDrinksInfo(oldWorksheet)
-      ).slice(parsedIds.length);
+      const drinks = await this.excelService.readDrinksInfo(oldWorksheet);
       for (const { url, id } of drinks) {
         const html = await this.fetcherService.fetchHtml(url, id);
+        if (!html) {
+          this.logger.error("Failed to fetch html");
+          continue;
+        }
         const $ = cheerio.load(html);
         parsedData.push(this.parsingService.parseCharacteristics($, id));
         const imagesUrls = this.parsingService.parsePhotosUrls($);
@@ -59,6 +77,7 @@ export class AppService {
             oldWorkbook,
             newWorksheet,
             newWorkbook,
+            oldWorksheet.id,
           );
           parsedData = [];
         }
@@ -66,7 +85,7 @@ export class AppService {
         parsedIds.push(id);
         await writeFile(
           PARSED_IDS_PATH,
-          JSON.stringify({ parsedIds, parsedData }),
+          JSON.stringify({ parsedIds, parsedData, parsedWorksheets }),
         );
         this.logger.log(`Drink ${id} is handled.`);
       }
@@ -75,12 +94,13 @@ export class AppService {
         oldWorkbook,
         newWorksheet,
         newWorkbook,
+        oldWorksheet.id,
       );
+      parsedWorksheets.push(newWorksheet.name);
       await writeFile(
         PARSED_IDS_PATH,
-        JSON.stringify({ parsedIds, parsedData: [] }),
+        JSON.stringify({ parsedIds, parsedData: [], parsedWorksheets }),
       );
-      i += 1;
       stopAtCount += 1;
     }
     return {

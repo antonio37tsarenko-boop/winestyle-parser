@@ -6,3 +6,7 @@ export const PARSED_IDS_PATH = join(
   process.cwd(),
   "data-for-parsing/parsed-data.json",
 );
+export const TEMP_TABLE_PATH = join(
+  process.cwd(),
+  "data-for-parsing/temp.xlsx",
+);

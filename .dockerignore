@@ -1,0 +1,9 @@
+dist
+.idea
+node_modules
+data-for-parsing/*
+
+!data-for-parsing/new.xlsx
+!data-for-parsing/old.xlsx
+!data-for-parsing/parsed-data.json
+!data-for-parsing/images/

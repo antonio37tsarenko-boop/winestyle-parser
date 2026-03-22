@@ -1,8 +1,12 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { CellValue, Worksheet } from "exceljs";
+import { CellValue, Row, Worksheet } from "exceljs";
 import * as ExcelJs from "exceljs";
-import { NEW_TABLE_PATH, PARSED_IDS_PATH } from "./excel.constants";
-import { readFile } from "fs/promises";
+import {
+  NEW_TABLE_PATH,
+  PARSED_IDS_PATH,
+  TEMP_TABLE_PATH,
+} from "./excel.constants";
+import { readFile, rename } from "fs/promises";
 import { getCleanText } from "../../utils/get-clean-text.util";
 import { IDrinkInfo } from "./interfaces/drink-info.interface";
 import { IParsedDataFile } from "./interfaces/parsed-data-file.interface";
@@ -16,15 +20,34 @@ export class ExcelService {
     const parsedDrinks: IParsedDataFile = JSON.parse(
       await readFile(PARSED_IDS_PATH, "utf-8"),
     );
+
+    let headersRow: Row | undefined;
+    for (const row of worksheet.getRows(0, 30) || []) {
+      if (row.actualCellCount > 1) {
+        headersRow = row;
+        break;
+      }
+    }
+
+    if (!headersRow) {
+      this.logger.warn(`Headers row is not found in ${worksheet.name}`);
+      throw new NotFoundException(
+        `Headers row is not found in ${worksheet.name}`,
+      );
+    }
+
     const parsedIds = parsedDrinks.parsedIds;
     worksheet.eachRow((row, rowNumber) => {
-      if (rowNumber == 1 || !rowNumber) {
+      if (rowNumber == headersRow.number || !rowNumber) {
         return;
       }
       let urlColIndex = -1;
 
-      worksheet.getRow(1).eachCell((cell, colNumber) => {
-        if (getCleanText(cell.text) === getCleanText("Ссылка")) {
+      headersRow.eachCell((cell, colNumber) => {
+        if (
+          getCleanText(cell.text) === getCleanText("Ссылка") ||
+          getCleanText(cell.text) === getCleanText("ссылка")
+        ) {
           urlColIndex = colNumber;
         }
       });
@@ -39,15 +62,15 @@ export class ExcelService {
       }
       if (
         typeof url !== "object" ||
-        !("hyperlink" in url) ||
-        !("text" in url)
+        !("hyperlink" in url)
+        // !("text" in url)
       ) {
         this.logger.error(
           "Url from table is not satisfying necessary requirements",
         );
         return;
       }
-      const id = row.getCell(1).value?.toString();
+      const id = getCleanText(row.getCell(1).value?.toString() || "");
       if (url && id && !parsedIds.includes(id)) {
         drinksInfo.push({ url: url.hyperlink, id: getCleanText(id) });
       }
@@ -61,8 +84,9 @@ export class ExcelService {
     existingWorkbook: ExcelJs.Workbook,
     newWorksheet: Worksheet,
     newWorkbook: ExcelJs.Workbook,
+    worksheetCount: number,
   ) {
-    const existingWorksheet = existingWorkbook.getWorksheet(1);
+    const existingWorksheet = existingWorkbook.getWorksheet(worksheetCount);
     if (!existingWorksheet) {
       throw new NotFoundException("Excel list is not found");
     }
@@ -111,7 +135,16 @@ export class ExcelService {
       const rowData: Record<string, CellValue> = {};
       row.eachCell((cell, colNumber) => {
         const headerName = existingWorksheet.getRow(1).getCell(colNumber).text;
-        rowData[headerName] = cell.value;
+
+        let rowDataValue = cell.value;
+        if (
+          rowDataValue &&
+          typeof rowDataValue === "object" &&
+          "hyperlink" in rowDataValue
+        ) {
+          rowDataValue = rowDataValue.hyperlink;
+        } else rowDataValue = cell.value?.toString() || "";
+        rowData[getCleanText(headerName)] = getCleanText(rowDataValue);
       });
       existingData.push(rowData);
     });
@@ -123,6 +156,7 @@ export class ExcelService {
           getCleanText(String(el["Артикул"]))
         );
       });
+
       if (!existingDataEl) this.logger.error(`Wrong id: ${el["Артикул"]}`);
 
       return { ...existingDataEl, ...el };
@@ -130,7 +164,8 @@ export class ExcelService {
 
     newWorksheet.addRows(dataToWrite);
 
-    await newWorkbook.xlsx.writeFile(NEW_TABLE_PATH);
+    await newWorkbook.xlsx.writeFile(TEMP_TABLE_PATH);
+    await rename(TEMP_TABLE_PATH, NEW_TABLE_PATH);
     this.logger.log(
       `Amount of all rows after writing: ${newWorksheet.rowCount}`,
     );

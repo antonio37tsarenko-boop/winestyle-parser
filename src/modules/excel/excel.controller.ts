@@ -38,6 +38,7 @@ export class ExcelController {
       x,
       d.getWorksheet(1) as Worksheet,
       d,
+      1,
     );
   }
 }

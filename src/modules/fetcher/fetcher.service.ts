@@ -13,10 +13,34 @@ process.env.NODE_TLS_REJECT_UNAUTHORIZED = "0";
 export class FetcherService {
   logger: Logger = new Logger();
   async fetchHtml(url: string, id: string) {
-    const { statusCode, body } = await request(url, httpConfig);
+    let statusCode, httpResult, body;
+    try {
+      httpResult = await request(url, httpConfig);
+      statusCode = httpResult.statusCode;
+      body = httpResult.body;
+    } catch (e) {
+      new Promise((resolve) => {
+        setTimeout(() => resolve(true), 2000);
+      });
+      this.logger.warn(
+        //@ts-ignore
+        `Error for html of drink ${id}: ${e.message}, trying again...`,
+      );
+      httpResult = await request(url, httpConfig);
+      statusCode = httpResult.statusCode;
+      body = httpResult.body;
+    }
 
-    this.logger.log(`status code for html of drink ${id}: ${statusCode}`);
-    return body.text();
+    if (statusCode !== 200) {
+      this.logger.warn(
+        `status code for html of drink ${id}: ${statusCode}, trying again...`,
+      );
+      httpResult = await request(url, httpConfig);
+      statusCode = httpResult.statusCode;
+      body = httpResult.body;
+    }
+
+    return body?.text();
   }
 
   async fetchAndWriteImages(urls: string[], id: string) {
@@ -26,8 +50,8 @@ export class FetcherService {
       const fullId = id + `-${imageCount}`;
 
       if (statusCode !== 200) {
-        this.logger.error(`Status code for drink ${id}: ${statusCode}`);
-      } else this.logger.log(`Status code for drink ${id}: ${statusCode}`);
+        this.logger.warn(`Status code for drink ${id}: ${statusCode}`);
+      }
 
       const buffer = Buffer.from(await body.arrayBuffer());
       await mkdir(IMAGES_DIR_PATH, { recursive: true });
